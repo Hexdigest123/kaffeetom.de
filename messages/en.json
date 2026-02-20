@@ -112,6 +112,8 @@
 	"booking_notes": "Notes",
 	"booking_submit": "Book appointment",
 	"booking_confirmed": "Your appointment has been confirmed!",
+	"booking_received": "Your appointment request has been sent!",
+	"booking_pending_info": "We will review your request and get back to you shortly.",
 
 	"form_firstname": "First name",
 	"form_lastname": "Last name",

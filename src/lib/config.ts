@@ -210,13 +210,22 @@ export const fulfillmentTypeLabels: Record<string, string> = {
 
 // ─── Repair Booking Statuses ────────────────────────────────────────────
 
-export const bookingStatuses = ['confirmed', 'completed', 'cancelled', 'no_show'] as const;
+export const bookingStatuses = [
+	'pending',
+	'confirmed',
+	'completed',
+	'cancelled',
+	'rejected',
+	'no_show'
+] as const;
 export type BookingStatus = (typeof bookingStatuses)[number];
 
 export const bookingStatusLabels: Record<string, string> = {
+	pending: 'Ausstehend',
 	confirmed: 'Bestätigt',
 	completed: 'Abgeschlossen',
 	cancelled: 'Storniert',
+	rejected: 'Abgelehnt',
 	no_show: 'Nicht erschienen'
 };
 

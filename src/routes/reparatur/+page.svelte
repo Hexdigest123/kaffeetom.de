@@ -18,6 +18,13 @@
 	let errorMsg = $state('');
 	let availableSlots = $state<string[]>([]);
 
+	// Machine model autocomplete
+	let machineResults = $state<
+		{ id: number; name: string; nameEn: string | null; modelSeries: string | null }[]
+	>([]);
+	let isMachineSearchOpen = $state(false);
+	let machineSearchTimeout: ReturnType<typeof setTimeout> | undefined;
+
 	const locale = $derived(getLocale());
 
 	const msg: Record<string, () => string> = {};
@@ -58,6 +65,39 @@
 
 	function handleLocationChange() {
 		fetchSlots();
+	}
+
+	function handleMachineSearch() {
+		clearTimeout(machineSearchTimeout);
+		const q = machineModel.trim();
+		if (q.length < 2) {
+			machineResults = [];
+			isMachineSearchOpen = false;
+			return;
+		}
+		machineSearchTimeout = setTimeout(async () => {
+			try {
+				const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+				const data = await res.json();
+				machineResults = data.results ?? [];
+				isMachineSearchOpen = machineResults.length > 0;
+			} catch {
+				machineResults = [];
+				isMachineSearchOpen = false;
+			}
+		}, 250);
+	}
+
+	function selectMachine(result: { name: string; nameEn: string | null }) {
+		machineModel = locale === 'en' && result.nameEn ? result.nameEn : result.name;
+		machineResults = [];
+		isMachineSearchOpen = false;
+	}
+
+	function closeMachineSearch() {
+		setTimeout(() => {
+			isMachineSearchOpen = false;
+		}, 150);
 	}
 
 	async function handleSubmit(e: SubmitEvent) {
@@ -128,7 +168,8 @@
 
 		{#if success}
 			<div class="rounded-xl bg-success/10 p-8 text-center">
-				<p class="font-display text-xl font-bold text-success">{m.booking_confirmed()}</p>
+				<p class="font-display text-xl font-bold text-success">{m.booking_received()}</p>
+				<p class="mt-2 font-body text-sm text-gray-600">{m.booking_pending_info()}</p>
 			</div>
 		{:else}
 			<form
@@ -256,7 +297,7 @@
 					/>
 				</div>
 
-				<div>
+				<div class="relative">
 					<label
 						for="bookingMachine"
 						class="mb-1 block font-body text-sm font-medium text-gray-700"
@@ -267,9 +308,36 @@
 						type="text"
 						id="bookingMachine"
 						bind:value={machineModel}
+						oninput={handleMachineSearch}
+						onfocusout={closeMachineSearch}
 						placeholder="z.B. Jura E8"
+						autocomplete="off"
 						class="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 font-body text-sm"
 					/>
+					{#if isMachineSearchOpen}
+						<ul
+							class="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg"
+						>
+							{#each machineResults as result}
+								<li>
+									<button
+										type="button"
+										class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm hover:bg-primary/5"
+										onmousedown={() => selectMachine(result)}
+									>
+										<span class="font-medium text-gray-900">
+											{locale === 'en' && result.nameEn ? result.nameEn : result.name}
+										</span>
+										{#if result.modelSeries}
+											<span class="rounded bg-coffee/10 px-1.5 py-0.5 text-xs text-coffee">
+												{result.modelSeries}
+											</span>
+										{/if}
+									</button>
+								</li>
+							{/each}
+						</ul>
+					{/if}
 				</div>
 
 				<div>

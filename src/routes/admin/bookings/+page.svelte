@@ -18,13 +18,34 @@
 	function statusLabel(status: string): string {
 		return bookingStatusLabels[status] ?? status;
 	}
+
+	function statusBadgeClass(status: string): string {
+		switch (status) {
+			case 'pending':
+				return 'bg-amber-100 text-amber-800';
+			case 'confirmed':
+				return 'bg-blue-100 text-blue-800';
+			case 'completed':
+				return 'bg-emerald-100 text-emerald-800';
+			case 'cancelled':
+				return 'bg-gray-100 text-gray-600';
+			case 'rejected':
+				return 'bg-red-100 text-red-800';
+			case 'no_show':
+				return 'bg-orange-100 text-orange-800';
+			default:
+				return 'bg-gray-100 text-gray-600';
+		}
+	}
 </script>
 
 <section class="bg-gray-50 px-4 py-8 sm:px-6">
 	<div class="mx-auto max-w-7xl space-y-6">
 		<div>
 			<h2 class="font-serif text-3xl text-primary">Service-Termine</h2>
-			<p class="mt-1 text-sm text-gray-500">Termine abschließen oder stornieren.</p>
+			<p class="mt-1 text-sm text-gray-500">
+				Termine bestätigen, ablehnen, abschließen oder stornieren.
+			</p>
 		</div>
 
 		{#if form?.error}
@@ -62,27 +83,58 @@
 									<td class="px-4 py-3 text-gray-700">{locationLabel(booking.locationId)}</td>
 									<td class="px-4 py-3 text-gray-700">{booking.preferredDate}</td>
 									<td class="px-4 py-3 text-gray-700">{booking.preferredTimeSlot}</td>
-									<td class="px-4 py-3 text-gray-700">{statusLabel(booking.status)}</td>
+									<td class="px-4 py-3">
+										<span
+											class="inline-block rounded-full px-2.5 py-1 text-xs font-medium {statusBadgeClass(
+												booking.status
+											)}"
+										>
+											{statusLabel(booking.status)}
+										</span>
+									</td>
 									<td class="px-4 py-3">
 										<div class="flex gap-2">
-											<form method="POST" action="?/markCompleted" use:enhance>
-												<input type="hidden" name="id" value={booking.id} />
-												<button
-													type="submit"
-													class="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50"
-												>
-													Abschließen
-												</button>
-											</form>
-											<form method="POST" action="?/cancel" use:enhance>
-												<input type="hidden" name="id" value={booking.id} />
-												<button
-													type="submit"
-													class="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-												>
-													Stornieren
-												</button>
-											</form>
+											{#if booking.status === 'pending'}
+												<form method="POST" action="?/confirm" use:enhance>
+													<input type="hidden" name="id" value={booking.id} />
+													<button
+														type="submit"
+														class="rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
+													>
+														Bestätigen
+													</button>
+												</form>
+												<form method="POST" action="?/reject" use:enhance>
+													<input type="hidden" name="id" value={booking.id} />
+													<button
+														type="submit"
+														class="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+													>
+														Ablehnen
+													</button>
+												</form>
+											{:else if booking.status === 'confirmed'}
+												<form method="POST" action="?/markCompleted" use:enhance>
+													<input type="hidden" name="id" value={booking.id} />
+													<button
+														type="submit"
+														class="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50"
+													>
+														Abschließen
+													</button>
+												</form>
+												<form method="POST" action="?/cancel" use:enhance>
+													<input type="hidden" name="id" value={booking.id} />
+													<button
+														type="submit"
+														class="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+													>
+														Stornieren
+													</button>
+												</form>
+											{:else}
+												<span class="text-xs text-gray-400">—</span>
+											{/if}
 										</div>
 									</td>
 								</tr>

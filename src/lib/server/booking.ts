@@ -70,7 +70,7 @@ export async function getAvailableSlots(
 			and(
 				eq(repairBookings.locationId, dbLocation.id),
 				eq(repairBookings.preferredDate, dateStr),
-				eq(repairBookings.status, 'confirmed')
+				sql`${repairBookings.status} IN ('pending', 'confirmed')`
 			)
 		)
 		.groupBy(repairBookings.preferredTimeSlot);
@@ -114,7 +114,7 @@ export async function getBookedDates(
 				eq(repairBookings.locationId, dbLocation.id),
 				sql`${repairBookings.preferredDate} >= ${startDate}`,
 				sql`${repairBookings.preferredDate} < ${endDate}`,
-				eq(repairBookings.status, 'confirmed')
+				sql`${repairBookings.status} IN ('pending', 'confirmed')`
 			)
 		)
 		.groupBy(repairBookings.preferredDate);

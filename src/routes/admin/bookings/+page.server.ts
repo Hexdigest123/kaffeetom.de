@@ -33,11 +33,31 @@ export const load: PageServerLoad = async (event) => {
 };
 
 export const actions: Actions = {
+	confirm: async (event) => {
+		requireAdmin(event);
+		const id = Number.parseInt(String((await event.request.formData()).get('id') ?? ''), 10);
+		if (!Number.isInteger(id) || id <= 0) {
+			return fail(400, { error: 'Ungültige Buchung.' });
+		}
+
+		await db.update(repairBookings).set({ status: 'confirmed' }).where(eq(repairBookings.id, id));
+		return { success: true };
+	},
+	reject: async (event) => {
+		requireAdmin(event);
+		const id = Number.parseInt(String((await event.request.formData()).get('id') ?? ''), 10);
+		if (!Number.isInteger(id) || id <= 0) {
+			return fail(400, { error: 'Ungültige Buchung.' });
+		}
+
+		await db.update(repairBookings).set({ status: 'rejected' }).where(eq(repairBookings.id, id));
+		return { success: true };
+	},
 	markCompleted: async (event) => {
 		requireAdmin(event);
 		const id = Number.parseInt(String((await event.request.formData()).get('id') ?? ''), 10);
 		if (!Number.isInteger(id) || id <= 0) {
-			return fail(400, { error: 'Ungultige Buchung.' });
+			return fail(400, { error: 'Ungültige Buchung.' });
 		}
 
 		await db.update(repairBookings).set({ status: 'completed' }).where(eq(repairBookings.id, id));
@@ -47,7 +67,7 @@ export const actions: Actions = {
 		requireAdmin(event);
 		const id = Number.parseInt(String((await event.request.formData()).get('id') ?? ''), 10);
 		if (!Number.isInteger(id) || id <= 0) {
-			return fail(400, { error: 'Ungultige Buchung.' });
+			return fail(400, { error: 'Ungültige Buchung.' });
 		}
 
 		await db.update(repairBookings).set({ status: 'cancelled' }).where(eq(repairBookings.id, id));

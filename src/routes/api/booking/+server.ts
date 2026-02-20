@@ -45,7 +45,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			preferredDate,
 			preferredTimeSlot,
 			notes: notes || null,
-			status: 'confirmed'
+			status: 'pending'
 		})
 		.returning();
 

@@ -112,6 +112,8 @@
 	"booking_notes": "Anmerkungen",
 	"booking_submit": "Termin buchen",
 	"booking_confirmed": "Ihr Termin wurde bestätigt!",
+	"booking_received": "Ihre Terminanfrage wurde gesendet!",
+	"booking_pending_info": "Wir prüfen Ihre Anfrage und melden uns in Kürze bei Ihnen.",
 
 	"form_firstname": "Vorname",
 	"form_lastname": "Nachname",
