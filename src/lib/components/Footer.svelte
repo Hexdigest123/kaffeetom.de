@@ -26,7 +26,7 @@
 			{m.footer_find_us()}
 		</h2>
 
-		<div class="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-12">
+		<div class="mx-auto grid max-w-5xl grid-cols-1 gap-8 md:grid-cols-2 md:gap-8">
 			{#each locations as location}
 				{@const isOpen = isLocationOpenNow(location)}
 				<div
