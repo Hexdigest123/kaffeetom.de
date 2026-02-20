@@ -69,12 +69,23 @@
 						{:else}
 							{#each data.orders as order}
 								<tr class="cursor-pointer hover:bg-gray-50">
-									<td class="px-4 py-3 font-medium text-gray-900">
+									<td class="px-4 py-3">
 										<a
 											href={`/admin/orders/${order.id}`}
-											class="font-semibold text-primary underline decoration-primary/30 underline-offset-2 hover:decoration-primary"
-											>{order.orderNumber}</a
+											class="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 font-mono text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-white"
 										>
+											{order.orderNumber}
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												class="h-3.5 w-3.5"
+												fill="none"
+												viewBox="0 0 24 24"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+											</svg>
+										</a>
 									</td>
 									<td class="px-4 py-3 text-gray-700">{order.customerName}</td>
 									<td class="px-4 py-3 text-gray-700"
