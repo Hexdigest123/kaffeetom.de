@@ -2,15 +2,28 @@ import { error, fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { orderItems, orders } from '$lib/server/db/schema';
 import { requireAdmin } from '$lib/server/admin-guard';
+import { stripe } from '$lib/server/stripe';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 async function updateOrderStatus(
 	orderId: number,
-	status: 'in_process' | 'fulfilled' | 'shipped' | 'cancelled' | 'refunded'
+	status: 'in_process' | 'fulfilled' | 'shipped' | 'cancelled'
 ) {
+	const [existing] = await db
+		.select({ status: orders.status })
+		.from(orders)
+		.where(eq(orders.id, orderId));
+
+	if (!existing) {
+		return { error: 'Bestellung nicht gefunden.' };
+	}
+	if (existing.status === 'refunded') {
+		return { error: 'Erstattete Bestellungen können nicht geändert werden.' };
+	}
+
 	const updates: {
-		status: 'in_process' | 'fulfilled' | 'shipped' | 'cancelled' | 'refunded';
+		status: 'in_process' | 'fulfilled' | 'shipped' | 'cancelled';
 		fulfilledAt?: Date | null;
 		shippedAt?: Date | null;
 		cancellationRequestedAt?: Date | null;
@@ -22,11 +35,12 @@ async function updateOrderStatus(
 	if (status === 'shipped') {
 		updates.shippedAt = new Date();
 	}
-	if (status === 'cancelled' || status === 'refunded') {
+	if (status === 'cancelled') {
 		updates.cancellationRequestedAt = null;
 	}
 
 	await db.update(orders).set(updates).where(eq(orders.id, orderId));
+	return { success: true };
 }
 
 export const load: PageServerLoad = async (event) => {
@@ -66,65 +80,76 @@ export const load: PageServerLoad = async (event) => {
 	};
 };
 
+function parseOrderId(formData: FormData): number | null {
+	const orderId = Number.parseInt(String(formData.get('orderId') ?? ''), 10);
+	if (!Number.isInteger(orderId) || orderId <= 0) return null;
+	return orderId;
+}
+
 export const actions: Actions = {
 	markInProcess: async (event) => {
 		requireAdmin(event);
-		const orderId = Number.parseInt(
-			String((await event.request.formData()).get('orderId') ?? ''),
-			10
-		);
-		if (!Number.isInteger(orderId) || orderId <= 0) {
-			return fail(400, { error: 'Ungultige Bestellung.' });
-		}
-		await updateOrderStatus(orderId, 'in_process');
+		const orderId = parseOrderId(await event.request.formData());
+		if (!orderId) return fail(400, { error: 'Ungültige Bestellung.' });
+		const result = await updateOrderStatus(orderId, 'in_process');
+		if ('error' in result) return fail(400, result);
 		return { success: true };
 	},
 	markFulfilled: async (event) => {
 		requireAdmin(event);
-		const orderId = Number.parseInt(
-			String((await event.request.formData()).get('orderId') ?? ''),
-			10
-		);
-		if (!Number.isInteger(orderId) || orderId <= 0) {
-			return fail(400, { error: 'Ungultige Bestellung.' });
-		}
-		await updateOrderStatus(orderId, 'fulfilled');
+		const orderId = parseOrderId(await event.request.formData());
+		if (!orderId) return fail(400, { error: 'Ungültige Bestellung.' });
+		const result = await updateOrderStatus(orderId, 'fulfilled');
+		if ('error' in result) return fail(400, result);
 		return { success: true };
 	},
 	markShipped: async (event) => {
 		requireAdmin(event);
-		const orderId = Number.parseInt(
-			String((await event.request.formData()).get('orderId') ?? ''),
-			10
-		);
-		if (!Number.isInteger(orderId) || orderId <= 0) {
-			return fail(400, { error: 'Ungultige Bestellung.' });
-		}
-		await updateOrderStatus(orderId, 'shipped');
+		const orderId = parseOrderId(await event.request.formData());
+		if (!orderId) return fail(400, { error: 'Ungültige Bestellung.' });
+		const result = await updateOrderStatus(orderId, 'shipped');
+		if ('error' in result) return fail(400, result);
 		return { success: true };
 	},
 	markCancelled: async (event) => {
 		requireAdmin(event);
-		const orderId = Number.parseInt(
-			String((await event.request.formData()).get('orderId') ?? ''),
-			10
-		);
-		if (!Number.isInteger(orderId) || orderId <= 0) {
-			return fail(400, { error: 'Ungultige Bestellung.' });
-		}
-		await updateOrderStatus(orderId, 'cancelled');
+		const orderId = parseOrderId(await event.request.formData());
+		if (!orderId) return fail(400, { error: 'Ungültige Bestellung.' });
+		const result = await updateOrderStatus(orderId, 'cancelled');
+		if ('error' in result) return fail(400, result);
 		return { success: true };
 	},
-	markRefunded: async (event) => {
+	refund: async (event) => {
 		requireAdmin(event);
-		const orderId = Number.parseInt(
-			String((await event.request.formData()).get('orderId') ?? ''),
-			10
-		);
-		if (!Number.isInteger(orderId) || orderId <= 0) {
-			return fail(400, { error: 'Ungultige Bestellung.' });
+		const orderId = parseOrderId(await event.request.formData());
+		if (!orderId) return fail(400, { error: 'Ungültige Bestellung.' });
+
+		const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
+		if (!order) {
+			return fail(404, { error: 'Bestellung nicht gefunden.' });
 		}
-		await updateOrderStatus(orderId, 'refunded');
-		return { success: true };
+
+		if (
+			!['paid', 'in_process', 'fulfilled', 'shipped', 'cancellation_requested'].includes(
+				order.status
+			)
+		) {
+			return fail(400, {
+				error: `Bestellung mit Status „${order.status}" kann nicht erstattet werden.`
+			});
+		}
+
+		if (!order.stripePaymentIntentId) {
+			await db.update(orders).set({ status: 'cancelled' }).where(eq(orders.id, orderId));
+			return { success: true, refunded: false, cancelled: true };
+		}
+
+		try {
+			await stripe.refunds.create({ payment_intent: order.stripePaymentIntentId });
+			await db.update(orders).set({ status: 'refunded' }).where(eq(orders.id, orderId));
+			return { success: true, refunded: true };
+		} catch {
+			return fail(500, { error: 'Stripe-Erstattung fehlgeschlagen.' });
+		}
 	}
 };
